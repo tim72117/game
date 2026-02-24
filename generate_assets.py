@@ -1,80 +1,65 @@
-# -*- coding: utf-8 -*- 
+# -*- coding: utf-8 -*-
 # generate_assets.py
 
 import vertexai
-from vertexai.preview.vision_models import ImageGenerationModel, Image
+from vertexai.preview.vision_models import ImageGenerationModel, Image, StyleReferenceConfig
 import os
 
-def generate_image_vertex_ai(project_id: str, location: str, prompt: str, output_filename: str = "generated_image.png"):
-    """Generates an image using Vertex AI and saves it to a file.
-
-    Args:
-        project_id: Your Google Cloud project ID.
-        location: The region for Vertex AI (e.g., "us-central1").
-        prompt: The text prompt describing the image to generate.
-        output_filename: The name of the file to save the generated image.
-
-    Returns:
-        The path to the saved image file, or None if generation failed.
-    """
-    # Initialize Vertex AI
+def generate_image_vertex_ai(project_id, location, prompt, output_filename, style_ref_path=None):
+    """Generates an image using Vertex AI, with optional style reference."""
     vertexai.init(project=project_id, location=location)
 
-    # Load the Imagen model
     try:
-        model = ImageGenerationModel.from_pretrained("imagen-3.0-fast-generate-001") 
+        model = ImageGenerationModel.from_pretrained("imagen-3.0-generate-001")
     except Exception as e:
-        print(f"Error loading image generation model: {e}")
-        print("Ensure model name, region, and Vertex AI API are correctly configured.")
+        print(f"Error loading model: {e}")
         return None
 
-    print(f"Generating image with prompt: '{prompt}'...")
+    print(f"Generating: '{prompt}'...")
 
-    # Generate images
     try:
-        response = model.generate_images(
-            prompt=prompt,
-        )
+        generate_params = {
+            "prompt": prompt,
+            "number_of_images": 1
+        }
 
-        if response.images and len(response.images) > 0:
-            try:
-                image_bytes = response.images[0].image_bytes # Access image data
-                with open(output_filename, "wb") as f:
-                    f.write(image_bytes)
-                print(f"Image successfully saved to: {output_filename}")
-                return output_filename
-            except AttributeError: # Fallback to save method if image_bytes is not found
-                try:
-                    response.images[0].save(output_filename)
-                    print(f"Image successfully saved to: {output_filename}")
-                    return output_filename
-                except Exception as save_error:
-                    print(f"Error saving image: {save_error}")
-                    return None
-            except IOError as e:
-                print(f"Error writing image file: {e}")
-                return None
-        else:
-            print("Image generation did not return any images.")
-            return None
+        # 整合風格參考
+        if style_ref_path and os.path.exists(style_ref_path):
+            print(f"  Using style reference: {os.path.basename(style_ref_path)}")
+            style_image = Image.load_from_file(style_ref_path)
+            generate_params["style_reference_config"] = StyleReferenceConfig(image=style_image)
 
+        response = model.generate_images(**generate_params)
+
+        if response.images:
+            output_dir = os.path.dirname(output_filename)
+            if output_dir and not os.path.exists(output_dir):
+                os.makedirs(output_dir)
+
+            response.images[0].save(output_filename)
+            print(f"Success! Saved to {output_filename}")
+            return output_filename
     except Exception as e:
-        print(f"Error during image generation: {e}")
+        print(f"Error: {e}")
         return None
 
 if __name__ == "__main__":
-    # Configuration
-    PROJECT_ID = "game-485606" 
-    LOCATION = "asia-east1"     
-    USER_PROMPT = "A cute, cartoon-style fox character with a transparent background, designed for a 2D side-scrolling game."
-    OUTPUT_IMAGE_FILENAME = "fox_character.png"
+    import argparse
 
-    # Execution
-    print(f"Attempting to generate image with prompt: '{USER_PROMPT}'")
-    print(f"Using Project ID: {PROJECT_ID}, Location: {LOCATION}")
+    parser = argparse.ArgumentParser(description="Generate game assets using Vertex AI Imagen.")
+    parser.add_argument("--project", required=True, help="Google Cloud Project ID")
+    parser.add_argument("--location", default="asia-east1", help="Vertex AI Location (default: asia-east1)")
+    parser.add_argument("--prompt", required=True, help="Text prompt for image generation")
+    parser.add_argument("--output", required=True, help="Output filename (e.g., asset.png)")
+    parser.add_argument("--style_ref", help="Path to style reference image (optional)")
 
-    saved_path = generate_image_vertex_ai(PROJECT_ID, LOCATION, USER_PROMPT, OUTPUT_IMAGE_FILENAME)
-    if saved_path:
-        print(f"\nImage generation process completed. Check the file '{saved_path}'.")
-    else:
-        print("\nImage generation failed. Please check the error messages above.")
+    args = parser.parse_args()
+
+    # 執行生成
+    generate_image_vertex_ai(
+        project_id=args.project,
+        location=args.location,
+        prompt=args.prompt,
+        output_filename=args.output,
+        style_ref_path=args.style_ref
+    )

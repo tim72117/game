@@ -1,0 +1,381 @@
+:root {
+    --primary-color: #5d8aa8;
+    --accent-color: #ffd700;
+    --text-color: #2c3e50;
+    --bg-color: #ffffff;
+    --ghibli-soft-white: rgba(245, 245, 245, 0.9);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    overflow-x: hidden;
+    user-select: none;
+    /* 防止工具拖拽時出現反白效果 */
+}
+
+/* Parallax Styling */
+.parallax-container {
+    position: relative;
+    height: 100vh;
+    width: 100%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f0f0f0;
+    /* 純色背景 */
+}
+
+/* 移除背景層樣式 */
+.layer {
+    display: none;
+}
+
+.layer-ore {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 5;
+    width: 300px;
+    height: 300px;
+    background-image: url('./assets/output/crystal_ore_8faces_clean.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    animation: floating 3s ease-in-out infinite;
+    pointer-events: auto;
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 10.5L20 5M11.5 13.5L4 21M7.5 17.5l3 3M10.5 14.5l3 3"/></svg>'), auto;
+}
+
+/* 裂縫疊加層 (調整為僅出現在一個面上) */
+.crack-overlay {
+    position: absolute;
+    top: 20%;
+    /* 偏移到上方平面 */
+    left: 45%;
+    /* 稍微偏離中心 */
+    width: 40%;
+    /* 縮小尺寸以符合單一面 */
+    height: 40%;
+    background-image: url('./assets/output/crack_overlay_1_clean.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    mix-blend-mode: multiply;
+    transform: rotate(-15deg);
+    /* 加入旋轉以對齊幾何感 */
+    filter: drop-shadow(0 0 5px #00ffff);
+    /* 青色光芒 */
+    animation: crack-glow 2s infinite alternate ease-in-out;
+}
+
+/* 刻文貼花基礎樣式 */
+.rune-decal {
+    position: absolute;
+    width: 30%;
+    height: 30%;
+    background-image: url('./assets/output/ancient_runes_decal_clean.png');
+    background-size: 300%;
+    /* 放大以選取單一符文 */
+    background-repeat: no-repeat;
+    background-position: 50% 50%;
+    pointer-events: none;
+    opacity: 0.6;
+    mix-blend-mode: multiply;
+    filter: sepia(0.5) contrast(1.2);
+    /* 增加石質感 */
+}
+
+/* 針對不同面的變形控制 */
+.rune-face-1 {
+    top: 35%;
+    left: 15%;
+    transform: rotateX(20deg) rotateY(-30deg) skewY(10deg);
+}
+
+.rune-face-2 {
+    top: 55%;
+    left: 60%;
+    transform: rotateX(-10deg) rotateY(40deg) skewX(-5deg);
+    opacity: 0.5;
+}
+
+.rune-face-3 {
+    top: 25%;
+    left: 55%;
+    transform: rotateZ(15deg) skewX(20deg);
+    opacity: 0.7;
+}
+
+@keyframes crack-glow {
+    from {
+        filter: drop-shadow(0 0 2px #00ffff);
+    }
+
+    to {
+        filter: drop-shadow(0 0 15px #00ffff);
+    }
+}
+
+/* 敲擊動畫 (Scale Bounce) */
+.hit {
+    animation: hit-bounce 0.15s ease-out !important;
+}
+
+@keyframes hit-bounce {
+    0% {
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    50% {
+        transform: translate(-50%, -50%) scale(1.15);
+    }
+
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+@keyframes floating {
+    0% {
+        transform: translate(-50%, -50%) translateY(0px);
+    }
+
+    50% {
+        transform: translate(-50%, -50%) translateY(-20px);
+    }
+
+    100% {
+        transform: translate(-50%, -50%) translateY(0px);
+    }
+}
+
+.content {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    padding: 2rem;
+    background: var(--ghibli-soft-white);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    max-width: 800px;
+    animation: fadeIn 1.5s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+h1 {
+    font-size: 3rem;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+p {
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+}
+
+/* Asset Grid */
+.asset-grid {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.asset-card {
+    background: white;
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease;
+    cursor: pointer;
+    width: 180px;
+}
+
+.asset-card:hover {
+    transform: translateY(-10px) rotate(2deg);
+    border: 2px solid var(--accent-color);
+}
+
+.asset-card img {
+    width: 100%;
+    height: 120px;
+    object-fit: contain;
+    margin-bottom: 10px;
+}
+
+.asset-card span {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+/* Details Section */
+.manual-controls {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 280px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
+    z-index: 100;
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* 3D Gizmo Styles (Floating near the ore) */
+.gizmo-container {
+    position: absolute;
+    top: 50%;
+    left: calc(50% + 180px);
+    /* 放在礦石右側 */
+    transform: translateY(-50%);
+    width: 150px;
+    height: 150px;
+    background: transparent;
+    perspective: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: move;
+    z-index: 200;
+}
+
+.gizmo-plane {
+    width: 80px;
+    height: 80px;
+    background: rgba(0, 255, 255, 0.2);
+    border: 2px solid #00ffff;
+    transform-style: preserve-3d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.1s ease-out;
+    position: relative;
+    /* 增加發光與厚度感 */
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+}
+
+/* 垂直軸線 (確保垂直時仍可見) */
+.gizmo-plane::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 2px;
+    background: #00ffff;
+    transform: rotateX(90deg);
+    /* 垂直於 X 軸的面 */
+    box-shadow: 0 0 5px #00ffff;
+}
+
+.gizmo-plane::after {
+    content: '';
+    position: absolute;
+    width: 2px;
+    height: 100%;
+    background: #00ffff;
+    transform: rotateY(90deg);
+    /* 垂直於 Y 軸的面 */
+    box-shadow: 0 0 5px #00ffff;
+}
+
+.gizmo-label {
+    font-size: 8px;
+    color: #00ffff;
+    text-align: center;
+    pointer-events: none;
+    backface-visibility: hidden;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.manual-controls h3 {
+    margin: 0;
+    color: var(--primary-color);
+}
+
+.slider-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.slider-group label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.slider-group input {
+    width: 120px;
+}
+
+.css-output {
+    margin-top: 10px;
+    padding: 10px;
+    background: #e8e8e8;
+    border-radius: 5px;
+    word-break: break-all;
+    font-family: monospace;
+    font-size: 11px;
+}
+
+.details {
+    padding: 4rem 2rem;
+    background-color: white;
+    text-align: center;
+}
+
+.details h2 {
+    margin-bottom: 2rem;
+    color: var(--primary-color);
+}
+
+.details ul {
+    list-style: none;
+    max-width: 600px;
+    margin: 0 auto;
+    text-align: left;
+}
+
+.details li {
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
+    position: relative;
+}
+
+.details li::before {
+    content: "🌱";
+    position: absolute;
+    left: 0;
+}

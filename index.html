@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>遊戲資產工作流展示 | 吉卜力風格</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+    <div id="app">
+        <section class="parallax-container">
+            <!-- 背景已移除 -->
+
+            <!-- 在中間放入礦石 -->
+            <div class="layer-ore" id="main-ore"></div>
+
+            <!-- 3D 視覺化調整區 (移動到礦石旁) -->
+            <div class="gizmo-container" id="gizmo-root">
+                <div class="gizmo-plane" id="gizmo-plane">
+                </div>
+            </div>
+
+            <!-- 手動調整面板 -->
+            <div id="control-panel" class="manual-controls">
+                <h3>貼花調整工具</h3>
+
+                <label>選擇層級:
+                    <select id="layer-select">
+                        <option value="rune-face-1">符文面 1</option>
+                        <option value="rune-face-2">符文面 2</option>
+                        <option value="rune-face-3">符文面 3</option>
+                        <option value="crack-overlay">裂縫層</option>
+                    </select>
+                </label>
+                <div class="slider-group">
+                    <label>水平 (Left): <input type="range" id="input-left" min="0" max="100" value="50">%</label>
+                    <label>垂直 (Top): <input type="range" id="input-top" min="0" max="100" value="50">%</label>
+                    <label>縮放 (Size): <input type="range" id="input-size" min="10" max="100" value="30">%</label>
+                    <label>旋轉 (Rotate): <input type="range" id="input-rotate" min="-180" max="180" value="0">deg</label>
+                    <label>X-旋轉: <input type="range" id="input-rotX" min="-90" max="90" value="0">deg</label>
+                    <label>Y-旋轉: <input type="range" id="input-rotY" min="-90" max="90" value="0">deg</label>
+                    <label>X-扭曲: <input type="range" id="input-skewX" min="-90" max="90" value="0">deg</label>
+                    <hr>
+                    <label>符文 U-偏移: <input type="range" id="input-u" min="0" max="100" value="50">%</label>
+                    <label>符文 V-偏移: <input type="range" id="input-v" min="0" max="100" value="50">%</label>
+                    <label>符文 縮放: <input type="range" id="input-zoom" min="100" max="1000" value="300">%</label>
+                </div>
+                <div class="css-output">
+                    <code>CSS: </code><span id="css-value"></span>
+                </div>
+            </div>
+
+        </section>
+    </div>
+    <script type="module" src="./main.js"></script>
+</body>
+
+</html>
