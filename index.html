@@ -12,9 +12,25 @@
     <div id="app">
         <section class="parallax-container">
             <!-- 背景已移除 -->
+            <!-- 背景層 -->
+            <div class="layer layer-bg-1" data-speed="2"></div>
+
+            <!-- 自動化資產預覽 (新加入：顯示在圖像左側) -->
+            <div id="preview-panel" class="asset-preview">
+                <div class="preview-header">自動化資產預覽 (V2)</div>
+                <div class="preview-image-box">
+                    <img id="automated-preview-img" src="./assets/output/broken_face_automated.png" alt="等待生成...">
+                </div>
+                <div class="preview-path">
+                    <code>assets/output/broken_face_automated.png</code>
+                </div>
+                <button id="btn-regenerate" class="accent" style="width: 100%; margin-top: 5px;">🔄 重新生成</button>
+            </div>
 
             <!-- 在中間放入礦石 -->
             <div class="layer-ore" id="main-ore"></div>
+            <div class="layer-ore broken-layer" id="broken-ore"></div>
+            <div class="crack-overlay" id="crack-overlay"></div>
 
             <!-- 3D 視覺化調整區 (移動到礦石旁) -->
             <div class="gizmo-container" id="gizmo-root">
@@ -22,37 +38,103 @@
                 </div>
             </div>
 
+            <!-- 區域選取畫布 -->
+            <canvas id="mask-canvas" class="mask-overlay"></canvas>
+
             <!-- 手動調整面板 -->
             <div id="control-panel" class="manual-controls">
-                <h3>貼花調整工具</h3>
+                <h3>貼花與區域選取工具</h3>
 
-                <label>選擇層級:
-                    <select id="layer-select">
-                        <option value="rune-face-1">符文面 1</option>
-                        <option value="rune-face-2">符文面 2</option>
-                        <option value="rune-face-3">符文面 3</option>
-                        <option value="crack-overlay">裂縫層</option>
-                    </select>
-                </label>
-                <div class="slider-group">
-                    <label>水平 (Left): <input type="range" id="input-left" min="0" max="100" value="50">%</label>
-                    <label>垂直 (Top): <input type="range" id="input-top" min="0" max="100" value="50">%</label>
-                    <label>縮放 (Size): <input type="range" id="input-size" min="10" max="100" value="30">%</label>
-                    <label>旋轉 (Rotate): <input type="range" id="input-rotate" min="-180" max="180" value="0">deg</label>
-                    <label>X-旋轉: <input type="range" id="input-rotX" min="-90" max="90" value="0">deg</label>
-                    <label>Y-旋轉: <input type="range" id="input-rotY" min="-90" max="90" value="0">deg</label>
-                    <label>X-扭曲: <input type="range" id="input-skewX" min="-90" max="90" value="0">deg</label>
-                    <hr>
-                    <label>符文 U-偏移: <input type="range" id="input-u" min="0" max="100" value="50">%</label>
-                    <label>符文 V-偏移: <input type="range" id="input-v" min="0" max="100" value="50">%</label>
-                    <label>符文 縮放: <input type="range" id="input-zoom" min="100" max="1000" value="300">%</label>
+                <div class="tool-tabs">
+                    <button class="tab-btn active" data-tab="adjust">變形調整</button>
+                    <button class="tab-btn" data-tab="mask">區域圈選</button>
                 </div>
-                <div class="css-output">
-                    <code>CSS: </code><span id="css-value"></span>
+
+                <div id="adjust-tab" class="tab-content active">
+                    <label>選擇層級:
+                        <select id="layer-select">
+                            <option value="rune-face-1">符文面 1</option>
+                            <option value="rune-face-2">符文面 2</option>
+                            <option value="rune-face-3">符文面 3</option>
+                            <option value="crack-overlay">裂縫層</option>
+                        </select>
+                    </label>
+                    <div class="slider-group">
+                        <label>水平 (Left): <input type="range" id="input-left" min="0" max="100" value="50">%</label>
+                        <label>垂直 (Top): <input type="range" id="input-top" min="0" max="100" value="50">%</label>
+                        <label>縮放 (Size): <input type="range" id="input-size" min="10" max="100" value="30">%</label>
+                        <label>旋轉 (Rotate): <input type="range" id="input-rotate" min="-180" max="180"
+                                value="0">deg</label>
+                        <label>X-旋轉: <input type="range" id="input-rotX" min="-90" max="90" value="0">deg</label>
+                        <label>Y-旋轉: <input type="range" id="input-rotY" min="-90" max="90" value="0">deg</label>
+                        <label>X-扭曲: <input type="range" id="input-skewX" min="-90" max="90" value="0">deg</label>
+                        <hr>
+                        <label>符文 U-偏移: <input type="range" id="input-u" min="0" max="100" value="50">%</label>
+                        <label>符文 V-偏移: <input type="range" id="input-v" min="0" max="100" value="50">%</label>
+                        <label>符文 縮放: <input type="range" id="input-zoom" min="100" max="1000" value="300">%</label>
+                    </div>
+                    <div class="css-output">
+                        <code>CSS: </code><span id="css-value"></span>
+                    </div>
+                </div>
+
+                <div id="mask-tab" class="tab-content">
+                    <p>點擊頂點圈選礦石表面</p>
+                    <div class="mask-controls">
+                        <button id="btn-apply-mask" class="primary">預覽擊碎</button>
+                        <button id="btn-ai-gen" class="accent">🚀 AI 一鍵生成</button>
+                        <button id="btn-clear-mask" class="danger">重選</button>
+                        <button id="btn-export-mask" class="primary">導出區域</button>
+                    </div>
+                    <div class="points-log">
+                        <code>座標:</code>
+                        <ul id="point-list"></ul>
+                    </div>
+
+                    <div class="ide-bridge" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px;">
+                        <p><strong>傳送至 IDE:</strong></p>
+                        <div style="display: flex; gap: 5px;">
+                            <input type="text" id="ide-msg-input" placeholder="輸入訊息..."
+                                style="flex: 1; padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                            <button id="btn-send-ide" class="primary" style="padding: 5px 10px;">傳送</button>
+                        </div>
+                    </div>
+
+                    <div id="progress-container"
+                        style="display: none; margin-top: 15px; padding: 10px; background: #f9f9f9; border-radius: 8px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span id="progress-status" style="font-size: 12px; color: #666;">準備中...</span>
+                            <span id="progress-percent" style="font-size: 12px; font-weight: bold;">0%</span>
+                        </div>
+                        <div style="width: 100%; height: 6px; background: #eee; border-radius: 3px; overflow: hidden;">
+                            <div id="progress-bar"
+                                style="width: 0%; height: 100%; background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%); transition: width 0.3s ease;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="log-container"
+                        style="margin-top: 15px; background: #1e1e1e; color: #d4d4d4; padding: 10px; border-radius: 8px; font-family: 'Consolas', monospace; font-size: 11px; max-height: 200px; overflow-y: auto; border: 1px solid #333;">
+                        <div
+                            style="color: #6a9955; border-bottom: 1px solid #333; margin-bottom: 5px; padding-bottom: 3px;">
+                            SERVICE LOGS [Antigravity Bridge]</div>
+                        <div id="service-logs"></div>
+                    </div>
                 </div>
             </div>
 
         </section>
+
+        <!-- 圖層管理面板 (底部水平列表) -->
+        <div id="layer-manager" class="layer-manager">
+            <div class="layer-manager-header">
+                <span>圖層管理器 (Layers)</span>
+                <span id="layer-count">0</span>
+            </div>
+            <div id="layer-list" class="layer-list">
+                <!-- 動態插入圖層項目 -->
+            </div>
+        </div>
     </div>
     <script type="module" src="./main.js"></script>
 </body>
