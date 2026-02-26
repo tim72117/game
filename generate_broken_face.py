@@ -3,40 +3,46 @@
 
 import json
 import os
-import vertexai
-from vertexai.preview.vision_models import ImageGenerationModel, Image as VertexImage
+import io
+import traceback
+from google import genai
+from google.genai import types
 from PIL import Image, ImageDraw
 import numpy as np
 
-import traceback
+def get_image_bytes(pil_img):
+    buf = io.BytesIO()
+    # 確保以 PNG 格式傳遞以保留透明度或精細度
+    pil_img.save(buf, format='PNG')
+    return buf.getvalue()
 
 def generate_broken_face(project_id, location, prompt, points_json, output_filename, base_image_path, style_ref_path=None):
     """
-    1. 根據網頁導出的多邊形座標建立與底圖尺寸一致的遮罩
-    2. 使用 Vertex AI Imagen 3.0 的 edit_image 進行 Inpainting (局部重繪)
-    3. 產出與底圖完美融合的破碎面資產
+    使用 google-genai SDK 進行 Inpainting (局部重繪)
     """
     try:
-        vertexai.init(project=project_id, location=location)
+        client = genai.Client(vertexai=True, project=project_id, location=location)
 
         if not os.path.exists(base_image_path):
             print(f"Error: Base image not found at {base_image_path}")
             return None
 
         # 1. 建立遮罩
-        print(f"Creating mask from points for base image: {base_image_path}")
+        print(f"Loading base image: {base_image_path}")
+        # imagen 3 通常偏好 RGB
+        base_pil = Image.open(base_image_path).convert("RGB")
+        width, height = base_pil.size
+        print(f"  Base image size: {width}x{height}, Mode: {base_pil.mode}")
+
         points = json.loads(points_json)
-        base_img = Image.open(base_image_path).convert("RGB")
-        width, height = base_img.size
-        print(f"  Base image size: {width}x{height}")
-
         # 建立黑白遮罩 (L 模式)
-        mask = Image.new("L", (width, height), 0)
-        draw = ImageDraw.Draw(mask)
+        mask_pil = Image.new("L", (width, height), 0)
+        draw = ImageDraw.Draw(mask_pil)
 
-        # 座標轉換
+        # 座標轉換 (網頁座標轉底圖像素)
         center_x, center_y = width // 2, height // 2
-        scale = width / 300.0 # 假設網頁預覽區為 300px
+        # 注意：此 scale 應與網頁端的實作對齊。這裡假設網頁寬度 300px
+        scale = width / 300.0
 
         polygon = []
         for p in points:
@@ -46,40 +52,61 @@ def generate_broken_face(project_id, location, prompt, points_json, output_filen
 
         draw.polygon(polygon, fill=255)
 
-        mask_path = "temp_inpainting_mask.png"
-        mask.save(mask_path)
+        # 保存除錯遮罩以便檢查
+        mask_pil.save("debug_mask.png")
+        print(f"  Debug mask saved to debug_mask.png")
 
-        # 診斷：計算遮罩非零像素數量
-        mask_array = np.array(mask)
+        # 診斷：遮罩像素統計
+        mask_array = np.array(mask_pil)
         nonzero_count = np.count_nonzero(mask_array)
-        print(f"  Mask created and saved to {mask_path} (size: {mask.size}, nonzero pixels: {nonzero_count})")
-        if nonzero_count == 0:
-            print("  WARNING: Mask is completely black! This will cause mask-free editing errors.")
+        print(f"  Mask created (nonzero pixels: {nonzero_count})")
 
-        # 2. 執行 Inpainting
-        enhanced_prompt = f"{prompt}"
+        # 2. 準備參考圖 (Reference Images)
+        # 確保遮罩與底圖尺寸完全相等
+        if base_pil.size != mask_pil.size:
+            raise ValueError(f"Dimension mismatch: Base {base_pil.size} != Mask {mask_pil.size}")
 
-        print(f"Executing inpainting in {location} using capability model: '{enhanced_prompt[:100]}...'")
+        print(f"  Verification: Base and Mask dimensions match ({width}x{height})")
+
+        # 2. 準備影像資料
+        base_bytes = get_image_bytes(base_pil)
+        mask_bytes = get_image_bytes(mask_pil)
+
+        # 3. 執行 Inpainting
         # 使用專門用於編輯能力的模型 ID
-        model = ImageGenerationModel.from_pretrained("imagen-3.0-capability-001")
+        model_id = "imagen-3.0-capability-001"
+        print(f"Executing inpainting using {model_id} via google-genai SDK...")
 
-        base_vertex_img = VertexImage.load_from_file(base_image_path)
-        mask_vertex_img = VertexImage.load_from_file(mask_path)
+        ref_images = [
+            types.RawReferenceImage(
+                reference_id=1,
+                reference_image=types.Image(image_bytes=base_bytes, mime_type='image/png')
+            ),
+            types.MaskReferenceImage(
+                reference_id=2,
+                reference_image=types.Image(image_bytes=mask_bytes, mime_type='image/png'),
+                config=types.MaskReferenceConfig(
+                    mask_mode='MASK_MODE_USER_PROVIDED'
+                )
+            )
+        ]
 
-        print(f"  Base Image: {base_image_path}")
-        print(f"  Mask Image: {mask_path}")
-
-        # 使用 edit_image 進行重繪
-        # 暫時移除 edit_mode="inpainting-insert" 以測試模型是否能自動識別遮罩
-        response = model.edit_image(
-            prompt=enhanced_prompt,
-            base_image=base_vertex_img,
-            mask=mask_vertex_img,
-            number_of_images=1
+        response = client.models.edit_image(
+            model=model_id,
+            prompt=prompt,
+            reference_images=ref_images,
+            config=types.EditImageConfig(
+                number_of_images=1,
+                edit_mode='EDIT_MODE_INPAINT_INSERTION',
+                guidance_scale=100.0,
+                safety_filter_level='block_some',
+                person_generation='dont_allow'
+            )
         )
 
-        if response.images:
-            response.images[0].save(output_filename)
+        if response.generated_images:
+            result_img = response.generated_images[0].image
+            result_img.save(output_filename)
             print(f"Success! Inpainted asset saved to {output_filename}")
         else:
             print("No images returned from Vertex AI.")
@@ -87,12 +114,8 @@ def generate_broken_face(project_id, location, prompt, points_json, output_filen
 
     except Exception as e:
         print(f"Inpainting error: {e}")
-        # 將 Traceback 列印到 stdout 確保網頁端一定能看到
         print(f"--- DETAILED TRACEBACK START ---\n{traceback.format_exc()}\n--- DETAILED TRACEBACK END ---")
         return None
-    finally:
-        if 'mask_path' in locals() and os.path.exists(mask_path):
-            os.remove(mask_path)
 
     return output_filename
 
@@ -100,11 +123,11 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--project", required=True)
-    parser.add_argument("--location", default="us-central1") # 切換至功能最完整的地區
+    parser.add_argument("--location", default="asia-northeast1")
     parser.add_argument("--points", required=True)
-    parser.add_argument("--prompt", default="exposed glowing magical crystal core, jagged shattered stone edges, deep volumetric cracks, Studio Ghibli cel-shaded style")
+    parser.add_argument("--prompt", default="a deep irregular hole recessed into the stone surface, the edges are sharply carved and drop vertically into the rock, the perimeter shows depth and thickness of the stone with cracked inwards textures, rough chiseled surfaces and hammer marks from mining, a golden raw gemstone tucked entirely inside the deep cavity, soft amber glow from the depth, perfectly blended with the original stone texture, consistent lighting and shadows, Studio Ghibli cel-shaded style")
     parser.add_argument("--output", required=True)
-    parser.add_argument("--base_image", required=True, help="Base image for inpainting")
+    parser.add_argument("--base_image", required=True)
     parser.add_argument("--style_ref", help="Style reference image path")
 
     args = parser.parse_args()

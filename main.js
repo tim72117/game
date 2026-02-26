@@ -169,9 +169,8 @@ document.getElementById('btn-export-mask').addEventListener('click', () => {
     navigator.clipboard.writeText(JSON.stringify(normalizedPoints)).then(() => console.log('座標已導出至剪貼簿。'));
 });
 
-const serviceLogs = document.getElementById('service-logs');
-
 function printLog(msg, type = 'info') {
+    const serviceLogs = document.getElementById('service-logs');
     if (!serviceLogs) return;
     const line = document.createElement('div');
     line.style.marginBottom = '2px';

@@ -37,10 +37,9 @@ const server = http.createServer((req, res) => {
                     const timestamp = Date.now();
                     const outputPath = `assets/output/broken_face_${timestamp}.png`;
                     const baseImage = data.base_image || 'assets/output/crystal_ore_8faces_clean.png';
-                    const cmd = `python generate_broken_face.py --project game-485606 --points "${pointsStr}" --output ${outputPath} --base_image ${baseImage} --style_ref assets/output/crystal_ore_8faces_clean.png --prompt "exposed magical gemstone, shallow break, ghibli style"`;
+                    const cmd = `python generate_broken_face.py --project game-485606 --points "${pointsStr}" --output ${outputPath} --base_image ${baseImage}`;
 
                     console.log(`\n>>> [ANTIGRAVITY_EXEC] 正在自動執行資產生成: ${cmd}`);
-                    printLog(`[EXEC] ${cmd}`, 'req'); // 雖然 printLog 是前端函數，這裡我們在 res 中回傳更好
 
                     exec(cmd, { cwd: process.cwd() }, (error, stdout, stderr) => {
                         console.log(`stdout: ${stdout}`);
@@ -57,6 +56,7 @@ const server = http.createServer((req, res) => {
                             }));
                             return;
                         }
+
 
                         console.log(`\n✅ [ANTIGRAVITY_SUCCESS] 資產已自動生成至 ${outputPath}`);
                         res.writeHead(200, { 'Content-Type': 'application/json' });
